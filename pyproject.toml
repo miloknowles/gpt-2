@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "gpt-2"
+version = "0.1.0"
+description = "A PyTorch implementation of GPT-2"
+authors = ["Milo Knowles <miloknowles97@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+torch = "^2.2.1"
+numpy = "^1.26.4"
+pytest = "^8.1.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
