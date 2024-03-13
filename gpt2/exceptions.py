@@ -1,0 +1,2 @@
+class IncompatibleArguments(ValueError):
+  pass
