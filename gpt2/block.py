@@ -36,6 +36,7 @@ class TransformerBlock(nn.Module):
     self,
     hidden_states: torch.Tensor,
     past_keys_and_values: Optional[tuple[torch.Tensor, torch.Tensor]] = None,
+    use_cache: bool = False,
     return_attention: bool = False,
   ) -> tuple[torch.Tensor, MaybeKeysValues, MaybeAttention]:
     """Forward pass of the Transformer block.
@@ -46,7 +47,12 @@ class TransformerBlock(nn.Module):
     hidden_states = self.ln1(hidden_states)
 
     attn_outputs: tuple[torch.Tensor, MaybeKeysValues, MaybeAttention] = \
-      self.attention(hidden_states, past_keys_and_values, return_attention)
+      self.attention(
+        hidden_states,
+        past_keys_and_values,
+        use_cache=use_cache,
+        return_attention=return_attention
+      )
 
     hidden_states += attn_outputs[0]
 

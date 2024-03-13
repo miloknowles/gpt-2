@@ -56,6 +56,7 @@ class Attention(nn.Module):
     self,
     hidden_states: torch.Tensor,
     past_keys_and_values: Optional[tuple[torch.Tensor, torch.Tensor]] = None,
+    use_cache: bool = False,
     return_attention: bool = False,
   ) -> tuple[torch.Tensor, MaybeKeysValues, MaybeAttention]:
     """Forward pass of QKV attention.
@@ -119,6 +120,6 @@ class Attention(nn.Module):
     # values that have those of the most recent token included.
     return (
       a,
-      (k, v) if past_keys_and_values is not None else None,
+      (k, v) if use_cache else None,
       w if return_attention else None,
     )
