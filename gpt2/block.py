@@ -13,7 +13,10 @@ class TransformerBlock(nn.Module):
     max_position_embeddings: int = 1024,
     embed_dim: int = 768,
     num_heads: int = 8,
-    scale: bool = False
+    scale: bool = False,
+    attn_pdrop: float = 0.1,
+    resid_pdrop: float = 0.1,
+    mlp_pdrop: float = 0.1,
   ):
     super(TransformerBlock, self).__init__()
 
@@ -21,7 +24,9 @@ class TransformerBlock(nn.Module):
       max_position_embeddings=max_position_embeddings,
       embed_dim=embed_dim,
       num_heads=num_heads,
-      scale=scale
+      scale=scale,
+      attn_pdrop=attn_pdrop,
+      resid_pdrop=resid_pdrop,
     )
     self.ln1 = nn.LayerNorm(embed_dim)
     self.ln2 = nn.LayerNorm(embed_dim)
@@ -31,7 +36,8 @@ class TransformerBlock(nn.Module):
       nn.Linear(embed_dim, 4*embed_dim),
       # https://paperswithcode.com/method/gelu
       nn.GELU(),
-      nn.Linear(4*embed_dim, embed_dim)      
+      nn.Linear(4*embed_dim, embed_dim),
+      nn.Dropout(p=mlp_pdrop)
     )
 
   def forward(
@@ -48,7 +54,26 @@ class TransformerBlock(nn.Module):
 
     Parameters
     ----------
-    * `hidden_states` : Input features with shape (batch, sequence, features).
+    * `hidden_states` :
+      Input features with shape (batch, sequence, features).
+    * `past_keys_and_values` :
+      The past keys and values for this layer (optional). If included, will have
+      shape (batch, heads, sequence, head_features).
+    * `use_cache` :
+      If `True`, the computed keys and values for this layer will be returned.
+    * `return_attention`:
+      Whether to return the internal attention map for this layer.
+
+    Returns
+    -------
+    A tuple of the hidden states, computed keys and values (optional), and
+    computed attention maps (optional).
+
+    * `0`: `hidden_states` has the same shape as the `hidden_shapes` input
+    * `1 (Optional)`: If `use_cache` is on, a tuple of size 2, containing keys
+      and values of shape (batch, heads, sequence, head_features).
+    * `2 (Optional)`: If `return_attention` is on, this will have shape
+      (batch, heads, sequence, sequence).
     """
     residual = hidden_states
 

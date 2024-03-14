@@ -1,7 +1,5 @@
-import math
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from gpt2.block import TransformerBlock
 from gpt2.attention import MaybeKeysValues, MaybeAttention
@@ -68,10 +66,16 @@ class GPT2(nn.Module):
       There should be an entry for each layer in the network, and each entry should
       be a tuple with two entries, the keys and values. Keys and values have shape
       (batch, heads, sequence, head_embed_dim).
+    * `use_cache` : Whether to return the computed keys and values for each layer.
 
     Returns
     -------
-    The final embeddings of shape (batch, sequence, features).
+    A tuple with two entries:
+
+    1. The final embeddings of shape (batch, sequence, features).
+    2. The computed keys and values for all layers if `use_cache` is on. This is
+       a tuple with an entry for each layer. Each entry is a tuple of size 2,
+       containing keys and values of shape (batch, heads, sequence, head_features).
     """
     assert(len(input_ids.shape) == 2)
 

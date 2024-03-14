@@ -18,7 +18,9 @@ class Attention(nn.Module):
     max_position_embeddings: int = 1024,
     embed_dim: int = 768,
     num_heads: int = 8,
-    scale: bool = False
+    scale: bool = False,
+    attn_pdrop: float = 0.1,
+    resid_pdrop: float = 0.1,
   ):
     """Implements the QKV multiheaded attention mechanism, as used in GPT-2 and similar.
 
@@ -28,6 +30,8 @@ class Attention(nn.Module):
     * `embed_dim` : The input feature dimension. This is the dimension of the residual stream.
     * `num_heads`: The number of attention heads. The `embed_dim` must be divisible by this.
     * `scale` : Whether to scale attention dot products by the inverse square root.
+    * `attn_pdrop` : The dropout probability applied to attention maps.
+    * `resid_prdrop` : The dropout probability applied to final attended features.
     
     References
     ----------
@@ -42,10 +46,14 @@ class Attention(nn.Module):
     self.num_heads = num_heads
     self.scale = scale
 
+    # Precompute the attention mask, up to the maximum sequence length.
     self.attention_mask = torch.tril(torch.ones(max_position_embeddings, max_position_embeddings))
 
     self.W_qkv = nn.Linear(embed_dim, 3 * embed_dim, bias=True)
     self.W_proj = nn.Linear(embed_dim, embed_dim, bias=True)
+
+    self.attn_dropout = nn.Dropout(p=attn_pdrop)
+    self.resid_dropout = nn.Dropout(p=resid_pdrop)
   
   def _split_heads(self, x: torch.Tensor, num_heads: int, head_embed_dim: int) -> torch.Tensor:
     """Split a tensor of shape (batch, sequence, features) into shape (batch, heads, sequence, head_features)."""
@@ -67,10 +75,14 @@ class Attention(nn.Module):
       The input features with shape (batch, sequence, features).
     * `past_keys_and_values` :
       Precomputed keys and values for past tokens that can be used to speed up inference.
+    * `use_cache` : Whether to return the keys and values from this module.
+    * `return_attention` : Whether to return the internal attention maps for each head.
 
     Returns
     -------
-    The output features with shape (batch, sequence, features).
+    1. The output features with shape (batch, sequence, features).
+    2. The computed keys and values from this module (optional).
+    3. The attention maps for each head (optional).
     """
     if past_keys_and_values is not None:
       assert(len(past_keys_and_values) == 2) # Expect two entries in the tuple.
@@ -109,6 +121,9 @@ class Attention(nn.Module):
     mask = self.attention_mask[:w.size(-2),:w.size(-1)]
     w = F.softmax(w * mask - inf*(1 - mask), dim=-1) # (B, H, 1|S, S)
 
+    # Dropout #1: Apply to the attention map.
+    w = self.attn_dropout(w)
+
     # Compute an attention-weighted sum of values.
     a = torch.matmul(w, v) # (B, H, 1|S, f)
     a = a.permute(0, 2, 1, 3) # (B, 1|S, H, f)
@@ -119,6 +134,9 @@ class Attention(nn.Module):
 
     # Project the attended features back to the model's residual stream dimension.
     a = self.W_proj(a) # (B, 1|S, F)
+    
+    # Dropout #2: Apply to the final attended features.
+    a = self.resid_dropout(a)
 
     # If doing inference with caching, we want to return the present keys and
     # values that have those of the most recent token included.
