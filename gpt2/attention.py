@@ -72,6 +72,9 @@ class Attention(nn.Module):
     -------
     The output features with shape (batch, sequence, features).
     """
+    if past_keys_and_values is not None:
+      assert(len(past_keys_and_values) == 2) # Expect two entries in the tuple.
+
     qkv: torch.Tensor = self.W_qkv(hidden_states) # (B, S, 3F)
 
     q, k, v = qkv.split(self.embed_dim, dim=-1) # Each has dimension (B, S, F).
@@ -85,8 +88,8 @@ class Attention(nn.Module):
     # the past keys and values with the present ones.
     if past_keys_and_values is not None:
       past_keys, past_values = past_keys_and_values
-      k = torch.cat([past_keys, k], dim=1)
-      v = torch.cat([past_values, v], dim=1)
+      k = torch.cat([past_keys, k], dim=-2)
+      v = torch.cat([past_values, v], dim=-2)
 
     # Note that Q * K^T is the same as taking the dot product of every row in
     # Q and and every row in K. Note that 
@@ -103,7 +106,7 @@ class Attention(nn.Module):
     # number before the softmax, we effectively zero out the masked elements.
     inf = torch.finfo(w.dtype).max
     # Slice the mask so that it matches the length of the sequence passed in.
-    mask = self.attention_mask[:w.size(-1),:w.size(-1)]
+    mask = self.attention_mask[:w.size(-2),:w.size(-1)]
     w = F.softmax(w * mask - inf*(1 - mask), dim=-1) # (B, H, 1|S, S)
 
     # Compute an attention-weighted sum of values.

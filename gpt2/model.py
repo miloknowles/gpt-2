@@ -90,8 +90,8 @@ class GPT2(nn.Module):
 
     present_keys_and_values = () if use_cache else None
 
-    for block, past in zip(self.blocks, past_key_values):
-      outputs = block(hidden_states, past, use_cache=use_cache, return_attention=False)
+    for block, past_key_values_layer in zip(self.blocks, past_key_values):
+      outputs = block(hidden_states, past_key_values_layer, use_cache=use_cache, return_attention=False)
       hidden_states = outputs[0]
 
       # Append the keys and values for this layer to the stack.

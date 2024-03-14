@@ -50,20 +50,18 @@ class TransformerBlock(nn.Module):
     ----------
     * `hidden_states` : Input features with shape (batch, sequence, features).
     """
-    hidden_states = self.ln1(hidden_states)
+    residual = hidden_states
 
     attn_outputs: tuple[torch.Tensor, MaybeKeysValues, MaybeAttention] = \
       self.attention(
-        hidden_states,
+        self.ln1(hidden_states),
         past_keys_and_values,
         use_cache=use_cache,
         return_attention=return_attention
       )
 
-    hidden_states += attn_outputs[0]
-
-    hidden_states = self.ln2(hidden_states)
-    hidden_states += self.mlp(hidden_states)
+    residual += attn_outputs[0]
+    residual += self.mlp(self.ln2(residual))
 
     # hidden_states, present_keys_and_values, present_attention
     return hidden_states, attn_outputs[1], attn_outputs[2]
