@@ -29,7 +29,7 @@ class Attention(nn.Module):
     * `max_position_embeddings` : The length of the context window.
     * `embed_dim` : The input feature dimension. This is the dimension of the residual stream.
     * `num_heads`: The number of attention heads. The `embed_dim` must be divisible by this.
-    * `scale` : Whether to scale attention dot products by the inverse square root.
+    * `scale` : Whether to scale attention  dot products by the inverse square root.
     * `attn_pdrop` : The dropout probability applied to attention maps.
     * `resid_prdrop` : The dropout probability applied to final attended features.
     
@@ -47,7 +47,12 @@ class Attention(nn.Module):
     self.scale = scale
 
     # Precompute the attention mask, up to the maximum sequence length.
-    self.attention_mask = torch.tril(torch.ones(max_position_embeddings, max_position_embeddings))
+    # By registering a buffer, this tensor will be moved to whatever device the
+    # module is moved to AND will be serialized in the state dict.
+    self.register_buffer(
+      "attention_mask",
+      torch.tril(torch.ones(max_position_embeddings, max_position_embeddings))
+    )
 
     self.W_qkv = nn.Linear(embed_dim, 3 * embed_dim, bias=True)
     self.W_proj = nn.Linear(embed_dim, embed_dim, bias=True)
@@ -59,6 +64,14 @@ class Attention(nn.Module):
     """Split a tensor of shape (batch, sequence, features) into shape (batch, heads, sequence, head_features)."""
     x = x.reshape((x.shape[0], x.shape[1], num_heads, head_embed_dim))
     return torch.permute(x, (0, 2, 1, 3))
+
+  def _merge_heads(self, x: torch.Tensor):
+    """Merge a tensor of shape (batch, heads, sequence, head_features) into shape (batch, sequence, features)."""
+    x = x.permute(0, 2, 1, 3) # (B, 1|S, H, f)
+
+    # Concatencate the little features from each head. The reshape squashes the
+    # last two dimensions (H, f) into one dimension of size H * f.
+    return torch.reshape(x, (x.shape[0], x.shape[1], self.embed_dim))
 
   def forward(
     self,
@@ -126,11 +139,8 @@ class Attention(nn.Module):
 
     # Compute an attention-weighted sum of values.
     a = torch.matmul(w, v) # (B, H, 1|S, f)
-    a = a.permute(0, 2, 1, 3) # (B, 1|S, H, f)
 
-    # Concatencate the little features from each head. The reshape squashes the
-    # last two dimensions (H, f) into one dimension of size H * f.
-    a = torch.reshape(a, (a.shape[0], a.shape[1], self.embed_dim))
+    a = self._merge_heads(a)
 
     # Project the attended features back to the model's residual stream dimension.
     a = self.W_proj(a) # (B, 1|S, F)

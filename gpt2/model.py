@@ -86,7 +86,6 @@ class GPT2(nn.Module):
 
     hidden_states = token_embed + position_embed
 
-    # TODO: dropout!
     # TODO: token type IDs
 
     if past_key_values is None:
