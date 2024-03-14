@@ -42,7 +42,7 @@ class Attention(nn.Module):
     self.num_heads = num_heads
     self.scale = scale
 
-    self.attn_mask = torch.tril(torch.ones(max_position_embeddings, max_position_embeddings))
+    self.attention_mask = torch.tril(torch.ones(max_position_embeddings, max_position_embeddings))
 
     self.W_qkv = nn.Linear(embed_dim, 3 * embed_dim, bias=True)
     self.W_proj = nn.Linear(embed_dim, embed_dim, bias=True)
@@ -101,9 +101,10 @@ class Attention(nn.Module):
     # Mask the attention map so that a token at position `i` can only attend to
     # the tokens at position `<= i`. Then take softmax. By subtracting a large
     # number before the softmax, we effectively zero out the masked elements.
-    # TODO: torch.finfo(self.dtype).min
-    ninf = torch.finfo(w.dtype).min
-    w = F.softmax(w * self.attn_mask - ninf*(1 - self.attn_mask), dim=-1) # (B, H, 1|S, S)
+    inf = torch.finfo(w.dtype).max
+    # Slice the mask so that it matches the length of the sequence passed in.
+    mask = self.attention_mask[:w.size(-1),:w.size(-1)]
+    w = F.softmax(w * mask - inf*(1 - mask), dim=-1) # (B, H, 1|S, S)
 
     # Compute an attention-weighted sum of values.
     a = torch.matmul(w, v) # (B, H, 1|S, f)

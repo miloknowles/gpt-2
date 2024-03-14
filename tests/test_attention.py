@@ -10,7 +10,7 @@ def test_attention_large():
   m = Attention(max_position_embeddings, embed_dim, num_heads, scale=True)
   x = torch.ones(n_batch, max_position_embeddings, embed_dim)
   out = m(x)
-  assert(out.shape == (n_batch, max_position_embeddings, embed_dim))
+  assert(out[0].shape == (n_batch, max_position_embeddings, embed_dim))
 
 
 def test_attention_identity():
@@ -61,4 +61,4 @@ def test_attention_identity():
     [1/3,   1/3, e/e_2,   0]
   ])
 
-  torch.testing.assert_close(out.squeeze(0), expected)
+  torch.testing.assert_close(out[0].squeeze(0), expected)

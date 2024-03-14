@@ -23,10 +23,12 @@ class GPT2(nn.Module):
     ----------
     https://github.com/openai/gpt-2/blob/master/src/model.py
     """
+    super(GPT2, self).__init__()
+
     self.token_embedding = nn.Embedding(vocab_size, embed_dim) # wte
     self.position_embedding = nn.Embedding(max_position_embeddings, embed_dim) # wpe
 
-    self.blocks = nn.ModuleList(*[TransformerBlock(
+    self.blocks = nn.ModuleList([TransformerBlock(
       max_position_embeddings=max_position_embeddings,
       embed_dim=embed_dim,
       num_heads=num_heads,
@@ -89,12 +91,12 @@ class GPT2(nn.Module):
     present_keys_and_values = () if use_cache else None
 
     for block, past in zip(self.blocks, past_key_values):
-      outputs = block(hidden_states, past, return_attention=False)
+      outputs = block(hidden_states, past, use_cache=use_cache, return_attention=False)
       hidden_states = outputs[0]
 
       # Append the keys and values for this layer to the stack.
       if use_cache:
-        present_keys_and_values + present_keys_and_values + (hidden_states[1],)
+        present_keys_and_values = present_keys_and_values + (outputs[1],)
 
     hidden_states = self.final_layer_norm(hidden_states)
 

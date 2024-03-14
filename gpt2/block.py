@@ -15,6 +15,8 @@ class TransformerBlock(nn.Module):
     num_heads: int = 8,
     scale: bool = False
   ):
+    super(TransformerBlock, self).__init__()
+
     self.attention = Attention(
       max_position_embeddings=max_position_embeddings,
       embed_dim=embed_dim,
@@ -25,7 +27,7 @@ class TransformerBlock(nn.Module):
     self.ln2 = nn.LayerNorm(embed_dim)
     # Note that in GPT-2, they increase the feature dimension by 4x, then reduce
     # it in a final projection step. After the first FC layer, they apply GELU.
-    self.mlp = nn.ModuleList(
+    self.mlp = nn.Sequential(
       nn.Linear(embed_dim, 4*embed_dim),
       # https://paperswithcode.com/method/gelu
       nn.GELU(),
@@ -43,6 +45,10 @@ class TransformerBlock(nn.Module):
 
     Note that on AIAYN, they take the norm AFTER each operation, whereas GPT-2
     seems to do it before each one. Not sure how much this matters?
+
+    Parameters
+    ----------
+    * `hidden_states` : Input features with shape (batch, sequence, features).
     """
     hidden_states = self.ln1(hidden_states)
 
@@ -59,4 +65,5 @@ class TransformerBlock(nn.Module):
     hidden_states = self.ln2(hidden_states)
     hidden_states += self.mlp(hidden_states)
 
-    return hidden_states, attn_outputs[1:]
+    # hidden_states, present_keys_and_values, present_attention
+    return hidden_states, attn_outputs[1], attn_outputs[2]
